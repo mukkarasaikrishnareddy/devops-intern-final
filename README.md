@@ -21,3 +21,11 @@ This repository is developed as part of the DevOps Intern Final Assessment.
 
 <img width="1346" height="688" alt="Screenshot 2026-08-31 071447" src="https://github.com/user-attachments/assets/1ab668ed-7abf-4b34-bd24-fe203af2d702" />
 
+## Nomad
+
+Nomad job configuration is available in `nomad/hello.nomad`.
+
+Run with:
+
+```bash
+nomad job run nomad/hello.nomad
