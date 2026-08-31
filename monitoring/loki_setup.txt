@@ -1,0 +1,28 @@
+Grafana Loki Monitoring Setup
+=============================
+
+Purpose:
+Grafana Loki is used for centralized log aggregation.
+
+Local Loki setup:
+Loki can be started using Docker with the following command:
+
+docker run -d --name loki -p 3100:3100 grafana/loki:latest -config.file=/etc/loki/local-config.yaml
+
+Check Loki:
+curl http://localhost:3100/ready
+
+Expected response:
+ready
+
+View Loki logs:
+docker logs loki
+
+The Docker container logs can be inspected using:
+
+docker logs <container_name>
+
+For a complete production setup, a log shipping agent such as Promtail or Grafana Alloy can forward container/Nomad logs to Loki.
+
+Loki endpoint:
+http://localhost:3100
