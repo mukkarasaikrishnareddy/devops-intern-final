@@ -17,3 +17,4 @@ The project covers:
 - Grafana Loki monitoring
 
 This repository is developed as part of the DevOps Intern Final Assessment.
+![Python CI](https://github.com/mukkarasaikrishnareddy/devops-intern-final/actions/workflows/ci.yaml/badge.svg)
