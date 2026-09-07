@@ -1,0 +1,229 @@
+{
+    "Attributes": {
+        "cpu.arch": "amd64",
+        "numa.node0.cores": "0-11",
+        "nomad.service_discovery": "true",
+        "unique.network.ip-address": "127.0.0.1",
+        "kernel.landlock": "v3",
+        "nomad.version": "1.8.3",
+        "nomad.advertise.address": "127.0.0.1:4646",
+        "cpu.reservablecores": "12",
+        "kernel.arch": "x86_64",
+        "os.version": "24.04",
+        "unique.hostname": "sai",
+        "cpu.numcores": "12",
+        "nomad.revision": "63b636e5cbaca312cf6ea63e040f445f05f00478",
+        "unique.storage.bytesfree": "1022355787776",
+        "os.signals": "SIGUSR1,SIGWINCH,SIGHUP,SIGIOT,SIGQUIT,SIGSTOP,SIGXFSZ,SIGBUS,SIGINT,SIGKILL,SIGPROF,SIGXCPU,SIGNULL,SIGUSR2,SIGFPE,SIGIO,SIGTRAP,SIGABRT,SIGCONT,SIGSYS,SIGTERM,SIGALRM,SIGPIPE,SIGTSTP,SIGTTIN,SIGTTOU,SIGILL,SIGSEGV",
+        "nomad.bridge.hairpin_mode": "false",
+        "cpu.frequency": "2495",
+        "kernel.version": "6.6.114.1-microsoft-standard-WSL2",
+        "unique.storage.bytestotal": "1081101176832",
+        "numa.node.count": "1",
+        "kernel.name": "linux",
+        "driver.raw_exec": "1",
+        "cpu.usablecompute": "29940",
+        "cpu.modelname": "12th Gen Intel(R) Core(TM) i5-12450H",
+        "os.name": "ubuntu",
+        "cpu.totalcompute": "29940",
+        "memory.totalbytes": "16597999616",
+        "unique.storage.volume": "/dev/sdd"
+    },
+    "CSIControllerPlugins": {},
+    "CSINodePlugins": {},
+    "CgroupParent": "nomad.slice",
+    "CreateIndex": 7,
+    "Datacenter": "dc1",
+    "Drain": false,
+    "DrainStrategy": null,
+    "Drivers": {
+        "exec": {
+            "Attributes": {},
+            "Detected": false,
+            "HealthDescription": "Driver must run as root",
+            "Healthy": false,
+            "UpdateTime": "2026-09-07T11:31:47.840186538Z"
+        },
+        "raw_exec": {
+            "Attributes": {
+                "driver.raw_exec": "true"
+            },
+            "Detected": true,
+            "HealthDescription": "Healthy",
+            "Healthy": true,
+            "UpdateTime": "2026-09-07T11:31:47.840226482Z"
+        },
+        "docker": {
+            "Attributes": {},
+            "Detected": false,
+            "HealthDescription": "Driver must run as root",
+            "Healthy": false,
+            "UpdateTime": "2026-09-07T11:31:47.840515001Z"
+        },
+        "qemu": {
+            "Attributes": {},
+            "Detected": false,
+            "HealthDescription": "",
+            "Healthy": false,
+            "UpdateTime": "2026-09-07T11:31:48.086830818Z"
+        },
+        "java": {
+            "Attributes": {},
+            "Detected": false,
+            "HealthDescription": "Driver must run as root",
+            "Healthy": false,
+            "UpdateTime": "2026-09-07T11:31:47.840071257Z"
+        }
+    },
+    "Events": [
+        {
+            "CreateIndex": 0,
+            "Details": null,
+            "Message": "Node registered",
+            "Subsystem": "Cluster",
+            "Timestamp": "2026-09-07T11:31:49Z"
+        }
+    ],
+    "GCVolumesOnNodeGC": false,
+    "HTTPAddr": "127.0.0.1:4646",
+    "HostNetworks": null,
+    "HostVolumes": null,
+    "ID": "1b0b1b11-6db2-f190-d543-1c6cb85055c5",
+    "LastDrain": null,
+    "Links": {},
+    "Meta": {
+        "connect.sidecar_image": "docker.io/envoyproxy/envoy:v${NOMAD_envoy_version}",
+        "connect.gateway_image": "docker.io/envoyproxy/envoy:v${NOMAD_envoy_version}",
+        "connect.log_level": "info",
+        "connect.proxy_concurrency": "1",
+        "connect.transparent_proxy.default_uid": "101",
+        "connect.transparent_proxy.default_outbound_port": "15001"
+    },
+    "ModifyIndex": 10,
+    "Name": "sai",
+    "NodeClass": "",
+    "NodeMaxAllocs": 0,
+    "NodePool": "default",
+    "NodeResources": {
+        "Cpu": {
+            "CpuShares": 29940,
+            "ReservableCpuCores": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+            ],
+            "TotalCpuCores": 12
+        },
+        "Devices": null,
+        "Disk": {
+            "DiskMB": 974994
+        },
+        "MaxDynamicPort": 32000,
+        "Memory": {
+            "MemoryMB": 15829
+        },
+        "MinDynamicPort": 20000,
+        "Networks": [
+            {
+                "CIDR": "",
+                "CNI": null,
+                "DNS": null,
+                "Device": "",
+                "DynamicPorts": null,
+                "Hostname": "",
+                "IP": "",
+                "MBits": null,
+                "Mode": "bridge",
+                "ReservedPorts": null
+            },
+            {
+                "CIDR": "127.0.0.1/32",
+                "CNI": null,
+                "DNS": null,
+                "Device": "lo",
+                "DynamicPorts": null,
+                "Hostname": "",
+                "IP": "127.0.0.1",
+                "MBits": 1000,
+                "Mode": "host",
+                "ReservedPorts": null
+            },
+            {
+                "CIDR": "10.255.255.254/32",
+                "CNI": null,
+                "DNS": null,
+                "Device": "lo",
+                "DynamicPorts": null,
+                "Hostname": "",
+                "IP": "10.255.255.254",
+                "MBits": 1000,
+                "Mode": "host",
+                "ReservedPorts": null
+            },
+            {
+                "CIDR": "::1/128",
+                "CNI": null,
+                "DNS": null,
+                "Device": "lo",
+                "DynamicPorts": null,
+                "Hostname": "",
+                "IP": "::1",
+                "MBits": 1000,
+                "Mode": "host",
+                "ReservedPorts": null
+            }
+        ]
+    },
+    "Reserved": {
+        "CPU": 0,
+        "Cores": 0,
+        "Devices": null,
+        "DiskMB": 0,
+        "IOPS": 0,
+        "MemoryMB": 0,
+        "MemoryMaxMB": 0,
+        "NUMA": null,
+        "Networks": null,
+        "SecretsMB": 0
+    },
+    "ReservedResources": {
+        "Cpu": {
+            "CpuShares": 0
+        },
+        "Disk": {
+            "DiskMB": 0
+        },
+        "Memory": {
+            "MemoryMB": 0
+        },
+        "Networks": {
+            "ReservedHostPorts": ""
+        }
+    },
+    "Resources": {
+        "CPU": 0,
+        "Cores": 0,
+        "Devices": null,
+        "DiskMB": 0,
+        "IOPS": 0,
+        "MemoryMB": 0,
+        "MemoryMaxMB": 0,
+        "NUMA": null,
+        "Networks": null,
+        "SecretsMB": 0
+    },
+    "SchedulingEligibility": "eligible",
+    "Status": "ready",
+    "StatusDescription": "",
+    "StatusUpdatedAt": 1788780710,
+    "TLSEnabled": false
+}
