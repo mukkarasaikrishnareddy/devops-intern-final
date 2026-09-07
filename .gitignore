@@ -1,4 +1,21 @@
+# Runtime and system files
+cpu.weight
+cpuset.cpus
+memory.max
+memory.swappiness
+
+# Archives
+*.zip
+
+# Nested repositories
+devops-intern-final/
+
+# Python cache
 __pycache__/
 *.pyc
-*.log
+.pytest_cache/
 
+# Local environment
+.env
+.venv/
+venv/
