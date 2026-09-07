@@ -43,7 +43,7 @@ class DevOpsHandler(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
         ts = datetime.now(timezone.utc).isoformat()
-        print(f'[{ts}] {self.command} {self.path} → {status} "{body}"', flush=True)
+        print(f'[{ts}] {self.command} {self.path} -> {status} "{body}"', flush=True)
 
     def log_message(self, fmt, *args):
         # Suppress the default Apache-style log; we handle it in do_GET.
@@ -54,7 +54,7 @@ def main():
     server = HTTPServer((HOST, PORT), DevOpsHandler)
     ts = datetime.now(timezone.utc).isoformat()
     print(f"[{ts}] DevOps HTTP server starting on {HOST}:{PORT}", flush=True)
-    print(f"[{ts}] Routes: GET /  →  Hello, DevOps! | GET /health  →  healthy", flush=True)
+    print(f"[{ts}] Routes: GET /  ->  Hello, DevOps! | GET /health  ->  healthy", flush=True)
     sys.stdout.flush()
     try:
         server.serve_forever()
