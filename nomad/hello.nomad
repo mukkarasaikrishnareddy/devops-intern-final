@@ -7,17 +7,20 @@ job "hello" {
 
     network {
       port "http" {
-        static = 8080
+        to = 8080
       }
     }
 
     service {
-      name = "hello"
-      port = "http"
+      name     = "hello"
+      port     = "http"
+      provider = "nomad"
+      tags     = ["devops", "http"]
 
       check {
+        name     = "http-health"
         type     = "http"
-        path     = "/"
+        path     = "/health"
         interval = "10s"
         timeout  = "2s"
       }
@@ -27,18 +30,13 @@ job "hello" {
       driver = "docker"
 
       config {
-        # Image published to GitHub Container Registry via the CI/CD pipeline.
-        # The image is public; no registry auth is required.
         image = "ghcr.io/mukkarasaikrishnareddy/devops-hello:latest"
         ports = ["http"]
-
-        # Force Nomad to always pull the latest image on each job run.
-        force_pull = true
       }
 
       resources {
-        cpu    = 100   # MHz
-        memory = 128   # MB
+        cpu    = 100
+        memory = 128
       }
     }
   }

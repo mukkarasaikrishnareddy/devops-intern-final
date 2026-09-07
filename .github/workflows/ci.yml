@@ -11,9 +11,9 @@ permissions:
   packages: write
 
 jobs:
-  # ──────────────────────────────────────────────
-  # Job 1: Test the Python HTTP service
-  # ──────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────
+  # Job 1 – Test the Python HTTP service
+  # ─────────────────────────────────────────────────────────────────
   test:
     name: Test Python HTTP Service
     runs-on: ubuntu-latest
@@ -27,50 +27,62 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Start Python HTTP server in background
+      - name: Verify Python syntax
+        run: python -m py_compile hello.py && echo "Syntax OK"
+
+      - name: Start HTTP server in background
         run: |
-          python hello.py &
-          echo "SERVER_PID=$!" >> $GITHUB_ENV
-          echo "Waiting for server to become ready..."
-          for i in $(seq 1 10); do
-            if curl -sf http://localhost:8080 > /dev/null; then
-              echo "Server is ready (attempt $i)"
+          python hello.py > server.log 2>&1 &
+          echo "SERVER_PID=$!" >> "$GITHUB_ENV"
+          # Wait up to 15 s for the server to accept connections
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8080 > /dev/null 2>&1; then
+              echo "Server ready after ${i}s"
               break
             fi
+            echo "Waiting... (${i}s)"
             sleep 1
           done
 
-      - name: Test HTTP endpoint
+      - name: Test GET /
         run: |
           RESPONSE=$(curl -sf http://localhost:8080)
-          echo "Response: $RESPONSE"
+          echo "Response: '$RESPONSE'"
           if [ "$RESPONSE" != "Hello, DevOps!" ]; then
-            echo "ERROR: unexpected response: $RESPONSE"
+            echo "FAIL: expected 'Hello, DevOps!' but got '$RESPONSE'"
             exit 1
           fi
-          echo "HTTP test passed: got 'Hello, DevOps!'"
+          echo "PASS: GET / returned 'Hello, DevOps!'"
 
-      - name: Test health endpoint
+      - name: Test GET /health
         run: |
           RESPONSE=$(curl -sf http://localhost:8080/health)
-          echo "Health response: $RESPONSE"
+          echo "Response: '$RESPONSE'"
           if [ "$RESPONSE" != "healthy" ]; then
-            echo "ERROR: unexpected health response: $RESPONSE"
+            echo "FAIL: expected 'healthy' but got '$RESPONSE'"
             exit 1
           fi
-          echo "Health check passed: got 'healthy'"
+          echo "PASS: GET /health returned 'healthy'"
 
-      - name: Stop Python HTTP server
+      - name: Upload application logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-server-log
+          path: server.log
+
+      - name: Stop HTTP server
         if: always()
         run: |
-          kill $SERVER_PID 2>/dev/null || true
+          kill "$SERVER_PID" 2>/dev/null || true
           echo "Server stopped"
 
-  # ──────────────────────────────────────────────
-  # Job 2: Build and push Docker image to GHCR
-  # ──────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────
+  # Job 2 – Build and push Docker image to GHCR
+  # Runs only after the test job passes.
+  # ─────────────────────────────────────────────────────────────────
   build-and-push:
-    name: Build & Push Docker Image to GHCR
+    name: Build and Push Docker Image to GHCR
     runs-on: ubuntu-latest
     needs: test
 
@@ -85,29 +97,54 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set image name (lowercase)
+        id: image
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/devops-hello:latest"
+          IMAGE_LC="${IMAGE,,}"
+          echo "name=${IMAGE_LC}" >> "$GITHUB_OUTPUT"
+          echo "Image: ${IMAGE_LC}"
+
       - name: Build Docker image
         run: |
-          IMAGE=ghcr.io/${{ github.repository_owner }}/devops-hello:latest
-          IMAGE_LC=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
-          docker build -t "$IMAGE_LC" .
-          echo "IMAGE_LC=$IMAGE_LC" >> $GITHUB_ENV
-          echo "Built image: $IMAGE_LC"
+          docker build -t "${{ steps.image.outputs.name }}" .
+          echo "Build complete: ${{ steps.image.outputs.name }}"
 
-      - name: Test Docker image locally before push
+      - name: Smoke-test the Docker image
         run: |
-          docker run -d --name test-container -p 8080:8080 "$IMAGE_LC"
-          sleep 3
-          RESPONSE=$(curl -sf http://localhost:8080)
-          echo "Docker container response: $RESPONSE"
-          docker stop test-container
-          docker rm test-container
-          if [ "$RESPONSE" != "Hello, DevOps!" ]; then
-            echo "ERROR: Docker container returned unexpected response"
-            exit 1
-          fi
-          echo "Docker container test passed"
+          docker run -d \
+            --name smoke-test \
+            -p 8080:8080 \
+            "${{ steps.image.outputs.name }}"
+
+          # Wait for the container to start
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8080 > /dev/null 2>&1; then
+              echo "Container ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+          RESP=$(curl -sf http://localhost:8080)
+          echo "GET /        → '$RESP'"
+          HEALTH=$(curl -sf http://localhost:8080/health)
+          echo "GET /health  → '$HEALTH'"
+
+          docker logs smoke-test
+          docker stop smoke-test
+          docker rm smoke-test
+
+          [ "$RESP"   = "Hello, DevOps!" ] || { echo "FAIL: unexpected response"; exit 1; }
+          [ "$HEALTH" = "healthy"         ] || { echo "FAIL: unexpected health";   exit 1; }
+          echo "PASS: Docker smoke-test passed"
 
       - name: Push Docker image to GHCR
         run: |
-          docker push "$IMAGE_LC"
-          echo "Pushed image to GHCR: $IMAGE_LC"
+          docker push "${{ steps.image.outputs.name }}"
+          echo "Pushed: ${{ steps.image.outputs.name }}"
+
+      - name: Verify push (image digest)
+        run: |
+          docker inspect "${{ steps.image.outputs.name }}" \
+            --format 'Digest: {{index .RepoDigests 0}}'
