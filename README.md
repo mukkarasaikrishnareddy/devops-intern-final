@@ -237,6 +237,16 @@ nomad job status hello
 nomad alloc status
 ```
 
+### Nomad Execution Note
+
+The Nomad job specification was validated successfully using:
+
+```bash
+nomad job validate nomad/hello.nomad
+```
+
+The job uses a Linux Docker image hosted on GHCR (`ghcr.io/mukkarasaikrishnareddy/devops-hello:latest`). On the native Windows Nomad agent, the Docker driver reported that Docker was configured for Linux containers and requested Windows containers (`Docker is configured with Linux containers; switch to Windows Containers`). Therefore, the job was not claimed as successfully deployed on the native Windows agent. The job specification is syntactically valid HCL and is intended to run in a Linux or WSL2-based Nomad environment.
+
 ---
 
 ## 10. Loki Log Aggregation (`monitoring/send_logs.py`)
@@ -294,8 +304,8 @@ bash scripts/sysinfo.sh
 
 ## 13. Limitations & Environmental Notes
 
-1. **Host Port 8080 Occupancy:** Host port 8080 on the Windows environment is bound by an existing system service (`Jenkins`, PID 7336). Local standalone container tests mapped port `18080:8080` while preserving container internal port `8080` and application configuration.
-2. **Nomad Windows Docker Driver:** Nomad agent v2.0.5 ran on Windows host. When scheduling Docker containers with Nomad on native Windows, the Nomad Docker driver flags `Healthy: false` with `Message: Docker is configured with Linux containers; switch to Windows Containers`. Running Nomad inside WSL2 Linux resolves driver compatibility for Linux Docker containers.
+1. **Host Port 8080 Occupancy:** Host port 8080 on the Windows environment is bound by an existing system service (`Jenkins`, PID 7336). Local standalone testing used host port `8081` (`PORT=8081 python hello.py`) and container port mapping `18080:8080`, preserving internal container port `8080` and application configuration.
+2. **Nomad Windows Docker Driver:** The Nomad job specification was validated successfully using `nomad job validate nomad/hello.nomad`. The job uses a Linux Docker image hosted on GHCR (`ghcr.io/mukkarasaikrishnareddy/devops-hello:latest`). On the native Windows Nomad agent, the Docker driver reported that Docker was configured for Linux containers and requested Windows containers (`Docker is configured with Linux containers; switch to Windows Containers`). Therefore, the job was not claimed as successfully deployed on the native Windows agent. The job specification is syntactically valid HCL and is intended to run in a Linux or WSL2-based Nomad environment.
 
 ---
 
