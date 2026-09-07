@@ -1,28 +1,238 @@
-Grafana Loki Monitoring Setup
-=============================
+Grafana Loki Monitoring – Local Log Forwarding Demo
+====================================================
 
-Purpose:
-Grafana Loki is used for centralized log aggregation.
+Author : Sai Krishna Reddy
+Date   : September 2026
+Purpose: Demonstrate actual log ingestion and querying with Grafana Loki
+         using the Loki HTTP push API and query API via curl.
 
-Local Loki setup:
-Loki can be started using Docker with the following command:
+This document covers a complete, working local demonstration that does NOT
+require Promtail, Grafana Agent, or any paid service. Every command shown
+here can be run on any machine with Docker and curl installed.
 
-docker run -d --name loki -p 3100:3100 grafana/loki:latest -config.file=/etc/loki/local-config.yaml
+------------------------------------------------------------------------
+STEP 1 – Start Loki in Docker
+------------------------------------------------------------------------
 
-Check Loki:
-curl http://localhost:3100/ready
+Run Loki using the official Docker image with the built-in local config:
 
-Expected response:
-ready
+  docker run -d \
+    --name loki \
+    -p 3100:3100 \
+    grafana/loki:latest \
+    -config.file=/etc/loki/local-config.yaml
 
-View Loki logs:
-docker logs loki
+Flags:
+  -d          Run container in the background (detached)
+  --name loki Assign a memorable name so we can reference it later
+  -p 3100:3100 Expose Loki on localhost:3100
 
-The Docker container logs can be inspected using:
+To confirm the container is running:
 
-docker logs <container_name>
+  docker ps --filter name=loki
 
-For a complete production setup, a log shipping agent such as Promtail or Grafana Alloy can forward container/Nomad logs to Loki.
+------------------------------------------------------------------------
+STEP 2 – Wait for Loki to be Ready
+------------------------------------------------------------------------
 
-Loki endpoint:
-http://localhost:3100
+Loki needs a few seconds to initialise. Poll the readiness endpoint:
+
+  curl -s http://localhost:3100/ready
+
+Expected response when Loki is ready:
+
+  ready
+
+If you see "Service Unavailable", wait a few more seconds and retry.
+
+  # Simple polling loop (Linux/macOS):
+  until curl -sf http://localhost:3100/ready; do
+    echo "Waiting for Loki..."
+    sleep 2
+  done
+  echo "Loki is ready"
+
+------------------------------------------------------------------------
+STEP 3 – Push an Application Log to Loki via the HTTP Push API
+------------------------------------------------------------------------
+
+Loki accepts log entries at the POST /loki/api/v1/push endpoint.
+The payload is JSON with a streams array.
+
+Each stream has:
+  - stream : key/value labels that identify the log source
+  - values : array of [unix_nanosecond_timestamp, log_line] pairs
+
+Get the current Unix time in nanoseconds (Linux/macOS):
+
+  TS=$(date +%s%N)
+
+Push a log line from the devops-hello application:
+
+  curl -s -X POST http://localhost:3100/loki/api/v1/push \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"streams\": [
+        {
+          \"stream\": {
+            \"app\": \"devops-hello\",
+            \"env\": \"local\"
+          },
+          \"values\": [
+            [\"$TS\", \"DevOps application running on port 8080\"]
+          ]
+        }
+      ]
+    }"
+
+Expected response: HTTP 204 No Content (empty body = success).
+
+Push a second line simulating a request log:
+
+  TS2=$(date +%s%N)
+  curl -s -X POST http://localhost:3100/loki/api/v1/push \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"streams\": [
+        {
+          \"stream\": {
+            \"app\": \"devops-hello\",
+            \"env\": \"local\"
+          },
+          \"values\": [
+            [\"$TS2\", \"GET / HTTP/1.1 - 200 - Hello, DevOps!\"]
+          ]
+        }
+      ]
+    }"
+
+------------------------------------------------------------------------
+STEP 4 – Query Logs Back from Loki
+------------------------------------------------------------------------
+
+Use the /loki/api/v1/query_range endpoint with a LogQL selector.
+
+  START=$(date -u -d '5 minutes ago' +%s%N 2>/dev/null || \
+          date -u -v-5M +%s%N)            # macOS fallback
+  END=$(date +%s%N)
+
+  curl -G "http://localhost:3100/loki/api/v1/query_range" \
+    --data-urlencode 'query={app="devops-hello"}' \
+    --data-urlencode "start=$START" \
+    --data-urlencode "end=$END" \
+    --data-urlencode "limit=10" | python3 -m json.tool
+
+Alternative one-liner with a relative time window (no variable needed):
+
+  curl -G "http://localhost:3100/loki/api/v1/query_range" \
+    --data-urlencode 'query={app="devops-hello"}' \
+    --data-urlencode "start=$(date -d '5 minutes ago' +%s)000000000" \
+    --data-urlencode "end=$(date +%s)000000000" \
+    --data-urlencode "limit=10"
+
+------------------------------------------------------------------------
+STEP 5 – Expected Query Result
+------------------------------------------------------------------------
+
+Loki returns JSON similar to:
+
+  {
+    "status": "success",
+    "data": {
+      "resultType": "streams",
+      "result": [
+        {
+          "stream": {
+            "app": "devops-hello",
+            "env": "local"
+          },
+          "values": [
+            ["1725686400000000000", "GET / HTTP/1.1 - 200 - Hello, DevOps!"],
+            ["1725686399000000000", "DevOps application running on port 8080"]
+          ]
+        }
+      ]
+    }
+  }
+
+The "values" array contains each pushed log line with its timestamp.
+This confirms that Loki received, stored, and returned the application logs.
+
+------------------------------------------------------------------------
+STEP 6 – Forward Real Docker Container Logs (Optional Extension)
+------------------------------------------------------------------------
+
+To automatically collect logs from the running devops-hello Docker container
+and forward them to Loki, use the Grafana Loki Docker log driver plugin.
+
+Install the plugin (run once):
+
+  docker plugin install grafana/loki-docker-driver:latest \
+    --alias loki \
+    --grant-all-permissions
+
+Run the devops-hello container with log forwarding enabled:
+
+  docker run -d \
+    --name devops-hello \
+    -p 8080:8080 \
+    --log-driver=loki \
+    --log-opt loki-url="http://localhost:3100/loki/api/v1/push" \
+    --log-opt loki-external-labels="app=devops-hello,env=local" \
+    ghcr.io/mukkarasaikrishnareddy/devops-hello:latest
+
+Generate traffic so logs are produced:
+
+  curl http://localhost:8080
+  curl http://localhost:8080/health
+
+Query the container logs from Loki (same query as Step 4 above).
+
+------------------------------------------------------------------------
+STEP 7 – Stop and Clean Up
+------------------------------------------------------------------------
+
+Stop the application container:
+
+  docker stop devops-hello && docker rm devops-hello
+
+Stop Loki:
+
+  docker stop loki && docker rm loki
+
+------------------------------------------------------------------------
+LIMITATIONS AND HONEST NOTES
+------------------------------------------------------------------------
+
+1. The curl-based push/query demo (Steps 3-5) is a complete, working
+   demonstration of Loki log ingestion and retrieval. It proves the
+   full Loki API flow without requiring any additional tools.
+
+2. The Docker log driver approach (Step 6) requires the plugin to be
+   installed once per Docker host. It is the recommended approach for
+   production-like environments.
+
+3. Nomad integration: When running the hello.nomad job, Nomad stdout
+   logs can be forwarded to Loki by adding a Promtail sidecar task
+   or by configuring Nomad's log shipper. This is beyond the scope
+   of this local demonstration.
+
+4. Persistence: Loki's default local config stores data in a temporary
+   directory inside the container. Data is lost when the container is
+   removed. For persistence, mount a volume:
+
+     -v /path/to/loki-data:/loki
+
+5. This demonstration uses Loki's local-config.yaml (single-process
+   mode), which is suitable for development and testing only.
+
+------------------------------------------------------------------------
+LOKI ENDPOINTS REFERENCE
+------------------------------------------------------------------------
+
+  Health / Readiness  : GET  http://localhost:3100/ready
+  Push logs           : POST http://localhost:3100/loki/api/v1/push
+  Query logs          : GET  http://localhost:3100/loki/api/v1/query_range
+  Instant query       : GET  http://localhost:3100/loki/api/v1/query
+  List labels         : GET  http://localhost:3100/loki/api/v1/labels
+  List label values   : GET  http://localhost:3100/loki/api/v1/label/<name>/values

@@ -1,0 +1,113 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: Test the Python HTTP service
+  # ──────────────────────────────────────────────
+  test:
+    name: Test Python HTTP Service
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Start Python HTTP server in background
+        run: |
+          python hello.py &
+          echo "SERVER_PID=$!" >> $GITHUB_ENV
+          echo "Waiting for server to become ready..."
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:8080 > /dev/null; then
+              echo "Server is ready (attempt $i)"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Test HTTP endpoint
+        run: |
+          RESPONSE=$(curl -sf http://localhost:8080)
+          echo "Response: $RESPONSE"
+          if [ "$RESPONSE" != "Hello, DevOps!" ]; then
+            echo "ERROR: unexpected response: $RESPONSE"
+            exit 1
+          fi
+          echo "HTTP test passed: got 'Hello, DevOps!'"
+
+      - name: Test health endpoint
+        run: |
+          RESPONSE=$(curl -sf http://localhost:8080/health)
+          echo "Health response: $RESPONSE"
+          if [ "$RESPONSE" != "healthy" ]; then
+            echo "ERROR: unexpected health response: $RESPONSE"
+            exit 1
+          fi
+          echo "Health check passed: got 'healthy'"
+
+      - name: Stop Python HTTP server
+        if: always()
+        run: |
+          kill $SERVER_PID 2>/dev/null || true
+          echo "Server stopped"
+
+  # ──────────────────────────────────────────────
+  # Job 2: Build and push Docker image to GHCR
+  # ──────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Docker Image to GHCR
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/devops-hello:latest
+          IMAGE_LC=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          docker build -t "$IMAGE_LC" .
+          echo "IMAGE_LC=$IMAGE_LC" >> $GITHUB_ENV
+          echo "Built image: $IMAGE_LC"
+
+      - name: Test Docker image locally before push
+        run: |
+          docker run -d --name test-container -p 8080:8080 "$IMAGE_LC"
+          sleep 3
+          RESPONSE=$(curl -sf http://localhost:8080)
+          echo "Docker container response: $RESPONSE"
+          docker stop test-container
+          docker rm test-container
+          if [ "$RESPONSE" != "Hello, DevOps!" ]; then
+            echo "ERROR: Docker container returned unexpected response"
+            exit 1
+          fi
+          echo "Docker container test passed"
+
+      - name: Push Docker image to GHCR
+        run: |
+          docker push "$IMAGE_LC"
+          echo "Pushed image to GHCR: $IMAGE_LC"
