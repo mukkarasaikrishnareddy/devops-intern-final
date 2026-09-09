@@ -1,6 +1,6 @@
 # DevOps Intern Final Assessment
 
-**Author:** Sai Krishna Reddy
+**Author:** Sai Krishna Reddy  
 **Repository:** [https://github.com/mukkarasaikrishnareddy/devops-intern-final](https://github.com/mukkarasaikrishnareddy/devops-intern-final)
 
 ---
@@ -41,12 +41,12 @@ Logs are queried from Loki
 |------------|---------|---------|
 | **Python** | 3.14.4 (Windows) / 3.12.3 (WSL) | Standard-library HTTP web service |
 | **Git** | 2.53.0.windows.1 | Source control and version tracking |
-| **Docker Desktop** | 27.5.1 | Container build & local runtime |
+| **Docker Desktop** | 27.5.1 | Container build and local runtime |
 | **Docker Compose** | v2.32.4-desktop.1 | Multi-container management |
-| **GitHub Actions** | v4 / v5 actions | CI/CD automation & GHCR publishing |
-| **GHCR** | — | Container image registry (`ghcr.io/mukkarasaikrishnareddy/devops-hello:latest`) |
+| **GitHub Actions** | v4 / v5 actions | CI/CD automation and GHCR publishing |
+| **GHCR** | — | Container image registry |
 | **HashiCorp Nomad** | 2.0.5 | Container workload orchestration |
-| **Grafana Loki** | 3.7.7 | Structured log aggregation & querying |
+| **Grafana Loki** | 3.7.7 | Structured log aggregation and querying |
 | **Linux / WSL2** | Ubuntu (WSL2) | System information scripting environment |
 
 ---
@@ -57,21 +57,22 @@ Logs are queried from Loki
 devops-intern-final/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                # GitHub Actions workflow (test, build, push to GHCR)
+│       └── ci.yml                  # GitHub Actions workflow
 ├── monitoring/
-│   ├── loki_setup.txt            # Loki setup guide & push/query API instructions
-│   └── send_logs.py              # Python stdlib script pushing & querying Loki logs
+│   ├── loki_setup.txt              # Loki setup and API instructions
+│   └── send_logs.py                # Script for pushing and querying Loki logs
 ├── nomad/
-│   └── hello.nomad               # Nomad job spec (service, health check, resource limits)
+│   └── hello.nomad                 # Nomad job specification
 ├── screenshots/
-│   ├── docker-build-run.png      # Verified Docker build & execution screenshot
-│   ├── github-actions-success.png# Verified GitHub Actions workflow screenshot
-│   └── linux-sysinfo.png         # Verified Linux sysinfo script screenshot
+│   ├── docker-build-run.png        # Docker build and execution screenshot
+│   ├── github-actions-success.png  # GitHub Actions workflow screenshot
+│   ├── linux-sysinfo.png           # Linux sysinfo script screenshot
+│   └── nomad-job-deployment.png    # Verified Nomad deployment screenshot
 ├── scripts/
-│   └── sysinfo.sh                # Linux system information script (LF endings)
-├── Dockerfile                    # Container definition (python:3.12-slim)
-├── hello.py                      # Long-running HTTP service (0.0.0.0:8080)
-└── README.md                     # Project documentation
+│   └── sysinfo.sh                  # Linux system information script
+├── Dockerfile                       # Container definition
+├── hello.py                         # Long-running HTTP service
+└── README.md                        # Project documentation
 ```
 
 ---
@@ -81,21 +82,27 @@ devops-intern-final/
 The application is a long-running HTTP service built exclusively using Python's standard-library `http.server` module.
 
 - **Host:** `0.0.0.0`
-- **Port:** `8080` (overridable via `PORT` environment variable)
+- **Port:** `8080`
+- **Configurable port:** The port can be overridden using the `PORT` environment variable.
 
 ### Endpoints
-- `GET /` → Returns `200 OK` with body `Hello, DevOps!`
-- `GET /health` → Returns `200 OK` with body `healthy`
-- Any other path → Returns `404 Not Found` with body `Not Found`
+
+| Method | Endpoint | Response |
+|--------|----------|----------|
+| `GET` | `/` | `200 OK` with `Hello, DevOps!` |
+| `GET` | `/health` | `200 OK` with `healthy` |
+| `GET` | Any other path | `404 Not Found` with `Not Found` |
 
 ### Local Execution & Testing
 
 Start the application:
+
 ```bash
 python hello.py
 ```
 
-Test HTTP responses:
+Test the HTTP responses:
+
 ```bash
 curl http://localhost:8080
 curl http://localhost:8080/health
@@ -107,6 +114,7 @@ curl -v http://localhost:8080/unknown
 ## 6. Docker Containerisation (`Dockerfile`)
 
 ### Dockerfile Specification
+
 ```dockerfile
 FROM python:3.12-slim
 
@@ -120,21 +128,38 @@ CMD ["python", "hello.py"]
 ```
 
 ### Build & Smoke Test
+
+Build the Docker image:
+
 ```bash
-# Build image
 docker build -t devops-hello:latest .
+```
 
-# Run container
-docker run -d --name devops-hello-container -p 18080:8080 devops-hello:latest
+Run the container:
 
-# Verify endpoints
+```bash
+docker run -d \
+  --name devops-hello-container \
+  -p 18080:8080 \
+  devops-hello:latest
+```
+
+Verify the endpoints:
+
+```bash
 curl http://localhost:18080
 curl http://localhost:18080/health
+```
 
-# Inspect logs
+Inspect the container logs:
+
+```bash
 docker logs devops-hello-container
+```
 
-# Clean up
+Remove the container:
+
+```bash
 docker rm -f devops-hello-container
 ```
 
@@ -142,42 +167,61 @@ docker rm -f devops-hello-container
 
 ## 7. GitHub Actions CI/CD (`.github/workflows/ci.yml`)
 
-The workflow triggers on `push` and `pull_request` to the `main` branch.
+The workflow triggers on `push` and `pull_request` events targeting the `main` branch.
 
 ### Key Features
-1. **Permissions:** Explicitly set to `contents: read` and `packages: write`.
-2. **Job 1 (`test`):**
+
+1. **Permissions**
+   - `contents: read`
+   - `packages: write`
+
+2. **Test Job**
    - Sets up Python 3.12.
    - Compiles `hello.py` syntax.
-   - Starts `hello.py` in the background and tests `/` and `/health`.
-   - Uploads `server.log` artifact on completion or failure (`actions/upload-artifact@v4`).
-3. **Job 2 (`build-and-push`):**
-   - Depends on `test` passing (`needs: test`).
+   - Starts the application in the background.
+   - Tests `/` and `/health`.
+   - Uploads `server.log` as an artifact using `actions/upload-artifact@v4`.
+
+3. **Build and Push Job**
+   - Runs only after the test job succeeds.
    - Authenticates to GHCR using `${{ secrets.GITHUB_TOKEN }}`.
-   - Lowercases image tag: `ghcr.io/mukkarasaikrishnareddy/devops-hello:latest`.
-   - Builds Docker image and performs container smoke test before pushing.
-   - Pushes image to GHCR and verifies image digest.
+   - Builds the Docker image.
+   - Performs a container smoke test.
+   - Pushes the image to GHCR.
+   - Verifies the image digest.
+
+### Published Image
+
+```text
+ghcr.io/mukkarasaikrishnareddy/devops-hello:latest
+```
 
 ---
 
 ## 8. GHCR Package Settings
 
 The container image is published to:
+
 ```text
 ghcr.io/mukkarasaikrishnareddy/devops-hello:latest
 ```
 
 ### Making the GHCR Package Public
-1. Navigate to GitHub → Profile / Organization → **Packages**.
-2. Select `devops-hello` package.
-3. Click **Package settings** → **Change package visibility**.
-4. Set visibility to **Public** and confirm.
+
+1. Navigate to GitHub.
+2. Open your profile or organization.
+3. Select **Packages**.
+4. Select the `devops-hello` package.
+5. Open **Package settings**.
+6. Select **Change package visibility**.
+7. Set the package visibility to **Public** and confirm.
 
 ---
 
 ## 9. Nomad Orchestration (`nomad/hello.nomad`)
 
 ### Job Definition
+
 ```hcl
 job "hello" {
   datacenters = ["dc1"]
@@ -225,59 +269,160 @@ job "hello" {
 ```
 
 ### Execution Commands
-```bash
-# Validate HCL syntax
-nomad job validate nomad/hello.nomad
 
-# Run job on running agent
+Validate the Nomad job specification:
+
+```bash
+nomad job validate nomad/hello.nomad
+```
+
+Run the job:
+
+```bash
 nomad job run nomad/hello.nomad
-
-# Check job & allocation status
-nomad job status hello
-nomad alloc status
 ```
 
-### Nomad Execution Note
-
-The Nomad job specification was validated successfully using:
+Check the job status:
 
 ```bash
-nomad job validate nomad/hello.nomad
+nomad job status hello
 ```
 
-The job uses a Linux Docker image hosted on GHCR (`ghcr.io/mukkarasaikrishnareddy/devops-hello:latest`). On the native Windows Nomad agent, the Docker driver reported that Docker was configured for Linux containers and requested Windows containers (`Docker is configured with Linux containers; switch to Windows Containers`). Therefore, the job was not claimed as successfully deployed on the native Windows agent. The job specification is syntactically valid HCL and is intended to run in a Linux or WSL2-based Nomad environment.
+List the job allocations:
+
+```bash
+nomad job allocs hello
+```
+
+Check a specific allocation:
+
+```bash
+nomad alloc status <ALLOCATION_ID>
+```
+
+Check allocation logs:
+
+```bash
+nomad alloc logs <ALLOCATION_ID> hello
+```
+
+Test the application using the dynamically assigned host port:
+
+```bash
+curl http://127.0.0.1:<NOMAD_HOST_PORT>/
+curl http://127.0.0.1:<NOMAD_HOST_PORT>/health
+```
+
+### Verified Nomad Deployment
+
+The Nomad job was successfully deployed and verified using the Docker driver inside WSL2.
+
+| Property | Verified Value |
+|----------|----------------|
+| **Job ID** | `hello` |
+| **Allocation ID** | `0e9e2d31` |
+| **Docker image** | `ghcr.io/mukkarasaikrishnareddy/devops-hello:latest` |
+| **Task driver** | `docker` |
+| **Port mapping** | `127.0.0.1:25794 -> 8080` |
+| **Deployment status** | `successful` |
+| **Deployment health** | `healthy` |
+| **Service health check** | `success` |
+| **Task status** | `running` |
+| **Restarts** | `0` |
+
+The Docker driver was detected as healthy on the WSL2 Nomad agent. The allocation successfully pulled the GHCR image, started the container, and passed the configured HTTP health check.
+
+### Nomad Application Verification
+
+Request to the root endpoint:
+
+```bash
+curl http://127.0.0.1:25794/
+```
+
+Output:
+
+```text
+Hello, DevOps!
+```
+
+Request to the health endpoint:
+
+```bash
+curl http://127.0.0.1:25794/health
+```
+
+Output:
+
+```text
+healthy
+```
+
+Nomad allocation logs also confirmed successful application startup and repeated successful health-check responses.
+
+The final deployment was performed using Linux Docker inside WSL2 because the native Windows Nomad Docker driver was not compatible with the Linux container configuration.
 
 ---
 
 ## 10. Loki Log Aggregation (`monitoring/send_logs.py`)
 
 ### Setup & Ingestion Steps
-1. Start Grafana Loki container:
-   ```bash
-   docker run -d --name loki -p 3100:3100 grafana/loki:latest "-config.file=/etc/loki/local-config.yaml"
-   ```
-2. Verify readiness endpoint:
-   ```bash
-   curl http://localhost:3100/ready
-   ```
-3. Push logs via Python standard-library script:
-   ```bash
-   python monitoring/send_logs.py
-   ```
-   *Sends JSON log payload to `http://localhost:3100/loki/api/v1/push` with label `job=devops-hello` (returns HTTP 204).*
-4. Query Loki log entries:
-   ```bash
-   curl "http://localhost:3100/loki/api/v1/query_range?query=%7Bjob%3D%22devops-hello%22%7D"
-   ```
+
+Start the Grafana Loki container:
+
+```bash
+docker run -d \
+  --name loki \
+  -p 3100:3100 \
+  grafana/loki:latest \
+  "-config.file=/etc/loki/local-config.yaml"
+```
+
+Verify the readiness endpoint:
+
+```bash
+curl http://localhost:3100/ready
+```
+
+Push logs using the Python standard-library script:
+
+```bash
+python monitoring/send_logs.py
+```
+
+The script sends a JSON log payload to:
+
+```text
+http://localhost:3100/loki/api/v1/push
+```
+
+The log stream uses the label:
+
+```text
+job=devops-hello
+```
+
+A successful push returns HTTP status `204`.
+
+Query Loki log entries:
+
+```bash
+curl "http://localhost:3100/loki/api/v1/query_range?query=%7Bjob%3D%22devops-hello%22%7D"
+```
 
 ---
 
 ## 11. Linux System Information Script (`scripts/sysinfo.sh`)
 
-The script outputs user context, current UTC timestamp, and disk filesystem usage.
+The script outputs:
+
+- User context
+- Current UTC timestamp
+- Disk filesystem usage
+
+Execute the script in Linux or WSL2:
 
 ```bash
-# Execute in Linux or WSL
 bash scripts/sysinfo.sh
 ```
 
@@ -287,25 +432,54 @@ bash scripts/sysinfo.sh
 
 | Test Case | Command | Result / Status |
 |-----------|---------|-----------------|
-| Python `hello.py` GET `/` | `curl http://localhost:8081` | ✅ Passed (`Hello, DevOps!`) |
-| Python `hello.py` GET `/health` | `curl http://localhost:8081/health` | ✅ Passed (`healthy`) |
-| Python `hello.py` GET 404 path | `curl http://localhost:8081/unknown` | ✅ Passed (`404 Not Found`) |
+| Python `hello.py` GET `/` | `curl http://localhost:8081` | ✅ Passed — `Hello, DevOps!` |
+| Python `hello.py` GET `/health` | `curl http://localhost:8081/health` | ✅ Passed — `healthy` |
+| Python `hello.py` GET 404 path | `curl http://localhost:8081/unknown` | ✅ Passed — `404 Not Found` |
 | Docker image build | `docker build -t devops-hello:latest .` | ✅ Passed |
 | Docker container smoke test | `docker run -p 18080:8080 ...` | ✅ Passed |
-| GitHub Actions workflow syntax | `python -m py_compile / yaml validate` | ✅ Passed |
-| Nomad HCL syntax | `nomad job validate nomad/hello.nomad` | ✅ Passed (`Job validation successful`) |
-| Nomad job submission | `nomad job run nomad/hello.nomad` | ⚠️ Executed (Host port 8080 occupied by Jenkins service; Nomad Windows Docker driver requires Windows Container mode or Linux agent context) |
-| Loki readiness & log push | `python monitoring/send_logs.py` | ✅ Passed (HTTP 204 received) |
-| Loki query verification | `/loki/api/v1/query_range` | ✅ Passed (Log line retrieved & verified) |
+| GitHub Actions workflow | GitHub Actions workflow run | ✅ Passed |
+| GHCR image push | `ghcr.io/mukkarasaikrishnareddy/devops-hello:latest` | ✅ Passed |
+| Nomad HCL syntax | `nomad job validate nomad/hello.nomad` | ✅ Passed |
+| Nomad job submission | `nomad job run nomad/hello.nomad` | ✅ Passed |
+| Nomad allocation | `nomad job allocs hello` | ✅ Passed — allocation running |
+| Nomad deployment health | `nomad job status hello` | ✅ Passed — deployment successful and healthy |
+| Nomad HTTP health check | `/health` | ✅ Passed — service check successful |
+| Nomad application response | `curl http://127.0.0.1:25794/` | ✅ Passed — `Hello, DevOps!` |
+| Nomad application health | `curl http://127.0.0.1:25794/health` | ✅ Passed — `healthy` |
+| Loki readiness and log push | `python monitoring/send_logs.py` | ✅ Passed — HTTP 204 received |
+| Loki query verification | `/loki/api/v1/query_range` | ✅ Passed — log line retrieved |
 | Linux script execution | `wsl bash scripts/sysinfo.sh` | ✅ Passed |
-| Line endings & secrets scan | `git diff --check`, `git grep` | ✅ Passed (LF line endings, 0 secrets) |
+| Line endings and secrets scan | `git diff --check`, `git grep` | ✅ Passed — LF line endings and no secrets detected |
 
 ---
 
 ## 13. Limitations & Environmental Notes
 
-1. **Host Port 8080 Occupancy:** Host port 8080 on the Windows environment is bound by an existing system service (`Jenkins`, PID 7336). Local standalone testing used host port `8081` (`PORT=8081 python hello.py`) and container port mapping `18080:8080`, preserving internal container port `8080` and application configuration.
-2. **Nomad Windows Docker Driver:** The Nomad job specification was validated successfully using `nomad job validate nomad/hello.nomad`. The job uses a Linux Docker image hosted on GHCR (`ghcr.io/mukkarasaikrishnareddy/devops-hello:latest`). On the native Windows Nomad agent, the Docker driver reported that Docker was configured for Linux containers and requested Windows containers (`Docker is configured with Linux containers; switch to Windows Containers`). Therefore, the job was not claimed as successfully deployed on the native Windows agent. The job specification is syntactically valid HCL and is intended to run in a Linux or WSL2-based Nomad environment.
+1. **Host Port 8080 Occupancy**
+
+   Host port `8080` was occupied by an existing Jenkins service. Local standalone testing therefore used host port `8081`, while Docker testing used the mapping `18080:8080`.
+
+   The internal application and container port remained `8080`.
+
+2. **Nomad Execution Environment**
+
+   The final Nomad deployment was executed inside WSL2 using a Linux Docker environment.
+
+   The native Windows Nomad agent was not used for the final deployment because the Docker driver reported that Docker was configured for Linux containers while the Windows agent expected Windows containers.
+
+3. **Dynamic Nomad Port**
+
+   Nomad assigned the host port dynamically. The verified deployment used:
+
+   ```text
+   127.0.0.1:25794 -> 8080
+   ```
+
+   The internal application port remains `8080`.
+
+4. **Dynamic Allocation ID**
+
+   Allocation IDs and host ports may change when the Nomad job is restarted or redeployed. The values documented above correspond to the verified deployment run.
 
 ---
 
@@ -316,6 +490,8 @@ bash scripts/sysinfo.sh
 ![Docker build and application test](screenshots/docker-build-run.png)
 
 ![Linux system information](screenshots/linux-sysinfo.png)
+
+![Nomad deployment success](screenshots/nomad-job-deployment.png)
 
 ---
 
